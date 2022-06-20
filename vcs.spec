@@ -6,6 +6,7 @@ License:        LGPLv2+
 URL:            https://p.outlyer.net/vcs/
 Source0:        https://p.outlyer.net/%{name}/files/%{name}-%{version}.tar.gz
 BuildArch:      noarch
+BuildRequires:  make
 Requires:       /usr/bin/ffmpeg
 Requires:       ImageMagick
 Requires:       coreutils
