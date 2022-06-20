@@ -7,6 +7,7 @@ URL:            https://p.outlyer.net/vcs/
 Source0:        https://p.outlyer.net/%{name}/files/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  make
+# satisfied by ffmpeg-free from Fedora or by ffmpeg from RPMFusion
 Requires:       /usr/bin/ffmpeg
 Requires:       ImageMagick
 Requires:       coreutils
