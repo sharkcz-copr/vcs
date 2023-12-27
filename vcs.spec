@@ -1,10 +1,14 @@
 Name:           vcs
 Summary:        Tool to create contact sheets (previews) from videos
 Version:        1.13.4
-Release:        1%{?dist}
+Release:        2%{?dist}
 License:        LGPLv2+
 URL:            https://p.outlyer.net/vcs/
 Source0:        https://p.outlyer.net/%{name}/files/%{name}-%{version}.tar.gz
+# update syntax for newer ImageMagick
+Patch0:         vcs-1.13.4-imagemagick.patch
+# egrep warns about its obsolescence in F-38
+Patch1:         vcs-1.13.4-grep.patch
 BuildArch:      noarch
 BuildRequires:  make
 # satisfied by ffmpeg-free from Fedora or by ffmpeg from RPMFusion
@@ -49,5 +53,8 @@ make DESTDIR=%{buildroot} prefix=%{_prefix} install
 
 
 %changelog
+* Wed Dec 27 2023 Dan Horák <dan[at]danny.cz> - 1.13.4-2
+- updates for F-38+
+
 * Mon Jun 20 2022 Dan Horák <dan[at]danny.cz> - 1.13.4-1
 - initial Fedora version

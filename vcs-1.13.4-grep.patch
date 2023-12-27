@@ -1,0 +1,127 @@
+From da82978806eb11a857cb181f77bd2941db4eafa1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Dan=20Hor=C3=A1k?= <dan@danny.cz>
+Date: Wed, 27 Dec 2023 20:47:49 +0100
+Subject: [PATCH] replace egrep with grep -E
+
+---
+ dist/vcs | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/vcs b/vcs
+index db90c38..4dc2105 100755
+--- a/vcs
++++ b/vcs
+@@ -761,7 +761,7 @@ check_constraint() {
+ 	if [[ ( -n $p ) && ! ( $p =~ ^- ) ]]; then
+ 		needle=$p
+ 	fi
+-	local map=$(echo "${OVERRIDE_MAP[*]}" | stonl | egrep -i "^$needle:")
++	local map=$(echo "${OVERRIDE_MAP[*]}" | stonl | grep -E -i "^$needle:")
+ 	[[ $map ]] || return 0
+ 	local ct=$(cut -d':' -f4 <<<"$map")
+ 	[[ $ct ]] || return 0
+@@ -818,7 +818,7 @@ parse_override() {
+ 	fi
+ 	local varname=$(echo "${o/=*}" | sed 's/[[:space:]]//g') # Trim var name
+ 	local lcvarname=$(echo "$varname" | tr A-Z a-z)
+-	local mapping=$(echo "${OVERRIDE_MAP[*]}" | stonl | egrep -i "^$lcvarname:")
++	local mapping=$(echo "${OVERRIDE_MAP[*]}" | stonl | grep -E -i "^$lcvarname:")
+ 
+ 	[[ $mapping ]] || return 0
+ 
+@@ -844,7 +844,7 @@ parse_override() {
+ 	local token= tokenmap=
+ 	for token in $(echo "$varval" | grep -o '\$[[:alnum:]_]*' | sed 's/^\$//') ; do
+ 		# Locate the mapping
+-		tokenmap=$(echo "${OVERRIDE_MAP[*]}" | stonl | egrep -i "^$token") || true
++		tokenmap=$(echo "${OVERRIDE_MAP[*]}" | stonl | grep -E -i "^$token") || true
+ 		if [[ -z $tokenmap ]]; then
+ 			# No mapping, leave intact
+ 			continue
+@@ -1202,9 +1202,9 @@ awkex() {
+ # stonl([$1 = string])
+ stonl() {
+ 	if [[ $1 ]]; then
+-		awk '{gsub(" ", "\n");print}' <<<"$1" | egrep -v '^$'
++		awk '{gsub(" ", "\n");print}' <<<"$1" | grep -E -v '^$'
+ 	else
+-		awk '{gsub(" ", "\n");print}' | egrep -v '^$'
++		awk '{gsub(" ", "\n");print}' | grep -E -v '^$'
+ 	fi
+ }
+ 
+@@ -1991,7 +1991,7 @@ mplayer_identify() {
+ 	if [[ "${mi[$FPS]:$(( ${#mi[$FPS]} - 1 ))}" == '0' ]]; then
+ 		mi[$FPS]="${mi[$FPS]:0:$(( ${#mi[$FPS]} - 1 ))}"
+ 	fi
+-	mi[$ASPECT]=$(grep ID_VIDEO_ASPECT <<<"$MPLAYER_CACHE" | egrep -v '^0.0000$' | cut -d'=' -f2 | tail -1)
++	mi[$ASPECT]=$(grep ID_VIDEO_ASPECT <<<"$MPLAYER_CACHE" | grep -E -v '^0.0000$' | cut -d'=' -f2 | tail -1)
+ 	# If none set, delete it
+ 	[[ ${mi[$ASPECT]} ]] && fptest "${mi[$ASPECT]}" -eq 0.0 && mi[$ASPECT]=''
+ 	mi[$VCNAME]=$(get_vcodec_name "${mi[$VCODEC]}")
+@@ -2124,7 +2124,7 @@ ffmpeg_identify() {
+ 
+ 	local fi=( ) vs= as= obs= vsid=
+ 	# FFmpeg is relatively new, introduced in 1.0.99 so it needs more testing
+-	FFMPEG_CACHE=$("$FFMPEG_BIN" -i "$f" -dframes 0 -vframes 0 /dev/null 2>&1 | egrep '(Stream|Duration:|^Seems)')
++	FFMPEG_CACHE=$("$FFMPEG_BIN" -i "$f" -dframes 0 -vframes 0 /dev/null 2>&1 | grep -E '(Stream|Duration:|^Seems)')
+ 	# Only the first streams of each type are honored. FIXME: Add multi-audio support.
+ 	vs=$(sed -n -e '/Stream/!d' -e '/Video:/!d' -e '/Video:/p;q' <<<"$FFMPEG_CACHE")
+ 	as=$(sed -n -e '/Stream/!d' -e '/Audio:/!d' -e '/Audio:/p;q' <<<"$FFMPEG_CACHE")
+@@ -2181,7 +2181,7 @@ ffmpeg_identify() {
+ 	# tbr is rounded to two decimals, the values used to derived it might be
+ 	# printed in a "Seems ..." line like the one in the example above so it
+ 	# can be re-calculated.
+-	fi[$FPS]=$(egrep -o '[0-9]*\.?[0-9]*k? tb(r|\(r\))' <<<"$vs" | cut -d' ' -f1)
++	fi[$FPS]=$(grep -E -o '[0-9]*\.?[0-9]*k? tb(r|\(r\))' <<<"$vs" | cut -d' ' -f1)
+ 	# Let's convert e.g. 23.98 into 23.976...:
+ 	if [[ ${fi[$FPS]} ]] && grep -q '\.' <<<"${fi[$FPS]}" ; then
+ 		# Decimals, see if we got better values available
+@@ -2189,7 +2189,7 @@ ffmpeg_identify() {
+ 		# Observations regarding video stream found
+ 		if [[ $vsobs ]] && grep -q " -> ${fi[$FPS]} (.*)" <<<"$vsobs" ; then
+ 			# FPS candidate
+-			local newfps=$(egrep -o -- '-> [^ ]* \([0-9]*/[0-9]*' <<<"$vsobs" | cut -d'(' -f2)
++			local newfps=$(grep -E -o -- '-> [^ ]* \([0-9]*/[0-9]*' <<<"$vsobs" | cut -d'(' -f2)
+ 			is_fraction $newfps && fi[$FPS]=$(keepdecimals "$newfps" 3)
+ 		fi
+ 	fi
+@@ -3560,7 +3560,7 @@ set_extended_font() {
+ 	trace $@
+ 	# This selection includes japanese fonts
+ 	local candidates=$(identify -list font | grep 'Font: ' | \
+-						egrep -io '[a-z-]*(kochi|mincho|sazanami|ipafont)[a-z-]*')
++						grep -E -io '[a-z-]*(kochi|mincho|sazanami|ipafont)[a-z-]*')
+ 	if [[ -z $candidates ]]; then
+ 		error "Unable to auto-select filename font, please provide one (see -fullhelp)"
+ 		return 1
+@@ -3743,7 +3743,7 @@ process() {
+ 			# It's a device. Note BSD has no concept of block devices.
+ 			# It MUST be mounted to continue. This is required to allow ffmpeg detection
+ 			#+and to calculate file size
+-			if ! mount | egrep -q "^$dvdn\ " ; then
++			if ! mount | grep -E -q "^$dvdn\ " ; then
+ 				error "DVD mode requires device ($f) to be mounted"
+ 				return $EX_UNAVAILABLE
+ 			fi
+@@ -4584,7 +4584,7 @@ generate_config() {
+ 	# Save it to "something.conf" and load it with "--config something.conf"
+ 	# (or "-C something.conf")
+ EOM
+-	echo "${OVERRIDE_MAP[*]}" | stonl | egrep -v '(deprecated=|alias)' | cut -d':' -f1-2 |\
++	echo "${OVERRIDE_MAP[*]}" | stonl | grep -E -v '(deprecated=|alias)' | cut -d':' -f1-2 |\
+ 	 while read ovname ; do
+ 		f=${ovname/:*}
+ 		t=${ovname#*:}
+@@ -5157,7 +5157,7 @@ while true ; do
+ 					;;
+ 				# Dump user-set variables and exit [since 1.12]
+ 				uservars)
+-					echo "${OVERRIDE_MAP[*]}" | stonl | egrep -v '(deprecated=|alias)' | cut -d':' -f1-2 |\
++					echo "${OVERRIDE_MAP[*]}" | stonl | grep -E -v '(deprecated=|alias)' | cut -d':' -f1-2 |\
+ 					 while read ovname ; do
+ 						f=${ovname/:*}
+ 						t=${ovname#*:}
+-- 
+2.43.0
+
