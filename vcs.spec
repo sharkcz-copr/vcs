@@ -4,7 +4,7 @@ Version:        1.13.4
 Release:        2%{?dist}
 License:        LGPLv2+
 URL:            https://p.outlyer.net/vcs/
-Source0:        https://p.outlyer.net/%{name}/files/%{name}-%{version}.tar.gz
+Source0:        https://p.outlyer.net/files/%{name}/%{name}-%{version}.tar.gz
 # update syntax for newer ImageMagick
 Patch0:         vcs-1.13.4-imagemagick.patch
 # egrep warns about its obsolescence in F-38
