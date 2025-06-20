@@ -9,8 +9,8 @@ Subject: [PATCH] replace egrep with grep -E
 
 diff --git a/vcs b/vcs
 index db90c38..4dc2105 100755
---- a/vcs
-+++ b/vcs
+--- a/dist/vcs
++++ b/dist/vcs
 @@ -761,7 +761,7 @@ check_constraint() {
  	if [[ ( -n $p ) && ! ( $p =~ ^- ) ]]; then
  		needle=$p

@@ -6,8 +6,8 @@ Date:   Sun Jun 23 18:46:18 2024 +0200
 
 diff --git a/vcs b/vcs
 index 98d1af8..79008f1 100755
---- a/vcs
-+++ b/vcs
+--- a/dist/vcs
++++ b/dist/vcs
 @@ -378,6 +378,9 @@ declare -i DECODER=$DEC_FFMPEG
  declare MPLAYER_BIN=
  declare FFMPEG_BIN=
@@ -73,8 +73,8 @@ Date:   Sun Jun 23 18:48:08 2024 +0200
 
 diff --git a/vcs b/vcs
 index 79008f1..adc974c 100755
---- a/vcs
-+++ b/vcs
+--- a/dist/vcs
++++ b/dist/vcs
 @@ -380,6 +380,8 @@ declare FFMPEG_BIN=
  
  # ImageMagick's convert command. Historically "convert", since IMv7 "magick"

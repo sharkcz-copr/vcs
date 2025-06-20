@@ -8,8 +8,8 @@ Date:   Mon May 9 21:47:13 2022 +0000
 
 diff --git a/vcs b/vcs
 index 96bc940..6282734 100755
---- a/vcs
-+++ b/vcs
+--- a/dist/vcs
++++ b/dist/vcs
 @@ -2580,7 +2580,13 @@ capture_and_evade() {
  			return $EX_SOFTWARE
  		fi
