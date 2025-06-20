@@ -1,0 +1,153 @@
+commit 07c7e76bb1b2eb6b9ad9d7fec562e6a917e4f690
+Author: Toni Corvera <outlyer@gmail.com>
+Date:   Sun Jun 23 18:46:18 2024 +0200
+
+    Make the convert command re-configurable
+
+diff --git a/vcs b/vcs
+index 98d1af8..79008f1 100755
+--- a/vcs
++++ b/vcs
+@@ -378,6 +378,9 @@ declare -i DECODER=$DEC_FFMPEG
+ declare MPLAYER_BIN=
+ declare FFMPEG_BIN=
+ 
++# ImageMagick's convert command. Historically "convert", since IMv7 "magick"
++declare CONVERT_BIN=
++
+ # When set to 1 the reported length by mplayer and ffmpeg won't be trusted
+ # and will trigger some custom tests.
+ # Enabled automatically on problematic files
+@@ -1407,6 +1410,11 @@ imh() {
+ 	identify -format '%h' "$1"
+ }
+ 
++# Wrapper around convert. TODO: Remove
++convert() {
++	"$CONVERT_BIN" "$@"
++}
++
+ # Get the line height used for a certain font and size
+ # line_height($1 = font, $2 = size)
+ line_height() {
+@@ -1587,6 +1595,13 @@ test_programs() {
+ 			(( retval++ ,1 ))
+ 		fi >/dev/null
+ 	done
++	# ImageMagick v7 deprecates convert in favour of just "magick"
++	local magick=$(type -pf magick)
++	if [[ -n "$magick" ]]; then
++		CONVERT_BIN="$magick"
++	else
++		CONVERT_BIN=$(type -pf convert)
++	fi
+ 	# TODO: [[x2]]
+ 
+ 	# Early exit
+@@ -5129,6 +5144,12 @@ while true ; do
+ 					assert '[[ -x $MPLAYER_BIN ]]'
+ 					warn "[U] MPLAYER_BIN=$MPLAYER_BIN"
+ 					;;
++				# convert path
++				set_convert=*)
++					CONVERT_BIN=$(realpathr "$(cut -d'=' -f2<<<"$2")")
++					assert '[[ -x $CONVERT_BIN ]]'
++					warn "[U] CONVERT_BIN=$CONVERT_BIN"
++					;;
+ 				# Ignore one of the players
+ 				disable_ffmpeg)
+ 					FFMPEG_BIN=''
+@@ -5252,6 +5273,7 @@ while true ; do
+ 					GETOPT:             $GETOPT
+ 					MPLAYER:            $MPLAYER_BIN
+ 					FFMPEG:             $FFMPEG_BIN
++					CONVERT:            $CONVERT_BIN
+ 					AWK:                $(realpathr $(type -pf awk))
+ 					sed:                $(realpathr $(type -pf sed))
+ 					POSIXLY_CORRECT:    $pc
+commit 1eb6a3787e993c48fcb671fe5a8d290019302541
+Author: Toni Corvera <outlyer@gmail.com>
+Date:   Sun Jun 23 18:48:08 2024 +0200
+
+    Fixes for ImageMagick v7
+
+diff --git a/vcs b/vcs
+index 79008f1..adc974c 100755
+--- a/vcs
++++ b/vcs
+@@ -380,6 +380,8 @@ declare FFMPEG_BIN=
+ 
+ # ImageMagick's convert command. Historically "convert", since IMv7 "magick"
+ declare CONVERT_BIN=
++# Will be set to 1 if running with ImageMagick v7 (or higher)
++declare -i IM7=0
+ 
+ # When set to 1 the reported length by mplayer and ffmpeg won't be trusted
+ # and will trigger some custom tests.
+@@ -1602,6 +1604,11 @@ test_programs() {
+ 	else
+ 		CONVERT_BIN=$(type -pf convert)
+ 	fi
++	local imver=$($CONVERT_BIN -version | head -1 | awk '{print $3}' | cut -d. -f1)
++	if [[ $imver -ge 7 ]]; then
++		IM7=1
++	fi
++
+ 	# TODO: [[x2]]
+ 
+ 	# Early exit
+@@ -2696,7 +2703,9 @@ filt_resize() {
+ 	local f="$1" t=$2 w=$3 h=$4
+ 
+ 	# Note the '!', required to change the aspect ratio
+-	RESULT=" \( -geometry ${w}x${h}! \) "
++	# TODO: Are the parentheses really necessary?
++	# RESULT=" \( -geometry ${w}x${h}! \) "
++	RESULT=" -geometry ${w}x${h}! "
+ }
+ 
+ # Draw a timestamp in the file
+@@ -2719,9 +2728,17 @@ filt_apply_stamp() {
+ 			warn "Very small timestamps in use. Disabling them with -dt might be preferable"
+ 		fi
+ 	fi
++	# IMv7 replaces -box with -undercolor
++	local tsbox=box
++	if [[ $IM7 -eq 1 ]]; then
++		tsbox=undercolor
++	fi 
+ 	# The last -gravity None is used to "forget" the previous gravity (otherwise it would
+ 	# affect stuff like the polaroid frames)
+-	RESULT=" \( -box '$BG_TSTAMPS' -fill '$FG_TSTAMPS' -stroke none -pointsize '$pts' "
++	RESULT=" \( "
++	# IMv7 appears to require a reference image inside the parentheses, which in turn requires a size
++	RESULT+="    xc:transparent -geometry ${width}x${height}!"
++	RESULT+="    -$tsbox '$BG_TSTAMPS' -fill '$FG_TSTAMPS' -stroke none -pointsize '$pts' "
+ 	RESULT+="    -gravity '$GRAV_TIMESTAMP' -font '$FONT_TSTAMPS' -strokewidth 3 -annotate +5+5 "
+ 	RESULT+="    ' $timestamp ' \) -flatten -gravity None "
+ }
+@@ -4164,20 +4181,21 @@ process() {
+ 			-font "$FONT_HEADING" -pointsize "$PTS_META" \
+ 			-background "$BG_HEADING" -fill "$FG_HEADING" \
+ 			\( \
+-				-gravity West \
++				-gravity NorthWest \
+ 				\( label:"$filename_label: " \
+ 					-font "$fn_font" label:"$filename_value" +append \
+ 				\) \
+ 				-font "$FONT_HEADING" \
+ 				label:"$filesize_label: $filesize_value" \
+ 				label:"Length: $(cut -d'.' -f1 <<<$(pretty_stamp ${VID[$LEN]}))" \
+-				-append -crop ${headwidth}x${headheight}+0+0 \
++				-append \
+ 			\) \
+ 			-append \
+ 			\( \
+-				-size ${headwidth}x${headheight} \
++				-size ${headwidth}x${headheight} xc:transparent -geometry ${headwidth}x${headheight} \
+ 				-gravity NorthEast -fill "$FG_HEADING" -annotate +0-1 "$meta2" \
+ 			\) \
++			-composite \
+ 			-bordercolor "$BG_HEADING" -border 9 \
+ 		\) \
+ 		"$output" -append \
